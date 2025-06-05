@@ -7,3 +7,5 @@ torch==2.7.0
 shap==0.47.2
 torchvision==0.22.0
 datasets==3.6.0
+interpret==0.6.10
+imblearn==0.13.0
