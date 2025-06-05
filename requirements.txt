@@ -7,4 +7,3 @@ torch==2.7.0
 shap==0.47.2
 torchvision==0.22.0
 datasets==3.6.0
-divexplorer==0.2.6
