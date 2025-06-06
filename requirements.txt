@@ -9,3 +9,5 @@ torchvision==0.22.0
 datasets==3.6.0
 interpret==0.6.10
 imblearn==0.13.0
+nbimporter==0.3.4
+nbformat==5.10.4
