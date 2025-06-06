@@ -76,20 +76,23 @@ k: number of selected elements
 
 returns: a dataframe with the top k elements, their true label and their predicted label
 """
-def get_topK(X_test, Y_test, ranking, probs, k):
+def get_topK(X_test, Y_test, y_pred, ranking, probs, k):
 	#sorts according to ranking
 	x_test_ranked = X_test.iloc[ranking]
 	y_test_ranked = Y_test.iloc[ranking]
 	probs_ranked = probs[ranking]
+	y_pred_ranked = y_pred[ranking]
 
 	#top k
 	x_topk = x_test_ranked.iloc[:k]
 	y_topk = y_test_ranked.iloc[:k]
 	probs_topk = probs_ranked[:k]
+	y_pred_ranked_k = y_pred_ranked[:k]
 	
 	#concat into a df
 	topk_df = x_topk.copy()
 	topk_df['true_label'] = y_topk
+	topk_df['pred_label'] = y_pred_ranked_k
 	topk_df['pred_prob'] = probs_topk
 
 	return topk_df
@@ -124,7 +127,7 @@ def fit_and_rank(model, X_train_enc, Y_train, X_test_enc, Y_test, path):
 	probs = model.predict_proba(X_test_enc)[:, 1]
 	ranking = probs.argsort()[::-1]
 
-	return ranking, probs
+	return ranking, probs, Y_pred
 	
 
 def attrition_flag_map(df):
