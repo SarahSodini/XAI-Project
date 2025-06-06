@@ -1,9 +1,12 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
 from sklearn.preprocessing import OneHotEncoder, StandardScaler, OrdinalEncoder, FunctionTransformer
 from sklearn.compose import ColumnTransformer
 from sklearn.inspection import permutation_importance
 from sklearn.metrics import classification_report
+
+import shap
 
 
 seed = 42
@@ -20,7 +23,7 @@ save_path: path to save plot
 
 returns: nothing
 """
-def print_permutation_importances(perm_imp_train, perm_imp_test, cols, plot=False, save_plot=False, save_path="fig.png"):
+def print_permutation_importances(perm_imp_train, perm_imp_test, cols, plot=True, save_plot=True, save_path="fig.png"):
 	print("Train permutation importance ")
 	for i, feature in enumerate(cols):
 		print(f"- {feature} => Mean: {perm_imp_train.importances_mean[i]:.4f} ; Std: {perm_imp_train.importances_std[i]:.4f}")
@@ -96,6 +99,7 @@ def get_topK(X_test, Y_test, y_pred, ranking, probs, k):
 	topk_df['pred_prob'] = probs_topk
 
 	return topk_df
+
 
 """
 Function that fits the model to the data and calculates the predictions of Y_test. It also prints the accuracy of the new trained model, 
@@ -189,3 +193,52 @@ def preprocessing_pipe():
 	remainder="drop")
 
 	return preprocessing_pipe
+
+def calc_shapley(x_test_enc, rf_model, id_instance_1, id_instance_2):
+	class_instance = 1
+	
+	sample = x_test_enc
+	masker = shap.maskers.Independent(data=x_test_enc)
+
+	explainer = shap.Explainer(model=rf_model.predict_proba, # the function predict_proba
+							masker=masker)
+
+	shap_values = explainer(sample)
+
+	shap_values_instance_1 = shap_values[id_instance_1][:, class_instance]
+	shap_values_instance_2 = shap_values[id_instance_2][:, class_instance]
+
+	return shap_values_instance_1, shap_values_instance_2
+
+def calc_shap_overall_diff(ranking, sample1_rank_index, sample2_rank_index, x_test_enc, rf_model):
+	id_instance_1 = ranking[sample1_rank_index]
+	id_instance_2 = ranking[sample2_rank_index]
+
+	shap_sample1, shap_sample2 = calc_shapley(x_test_enc, rf_model, id_instance_1, id_instance_2)
+
+	shap_diff = np.subtract(shap_sample1, shap_sample2)
+	val_diff = np.subtract(x_test_enc.iloc[id_instance_1], x_test_enc.iloc[id_instance_2])
+
+	prod = shap_diff * val_diff
+
+	abs_prod = np.abs(prod) 
+
+	return abs_prod
+
+def plot_prob_diff(probabilities, pre_prob, path):
+	# Differences
+	probs = [float(p[1]) for p in probabilities]
+	labels = [p[0] for p in probabilities]
+	differences = [p - pre_prob for p in probs]
+	print(differences)
+
+	# Plot
+	plt.figure(figsize=[6, 3])
+	plt.barh(range(len(probs)), differences, height=0.5)
+	plt.title('Difference Between Target and Calculated Probabilities')
+	plt.ylabel('Features')
+	plt.yticks(range(len(probs)), labels, rotation=0)
+	plt.xlabel('Absolute Difference')
+	plt.legend()
+	plt.savefig(f"pictures/exp2/{path}.png")
+	plt.show()
