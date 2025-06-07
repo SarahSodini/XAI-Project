@@ -8,7 +8,6 @@ from sklearn.metrics import classification_report
 
 import shap
 
-
 seed = 42
 
 """
@@ -73,18 +72,19 @@ Function that retrieves top k values of a ranking from the dataset
 
 X_test: X testing data
 Y_test: Y testing data
+Y_pred: model's Y predictions
 ranking: a list of indices representing the ranked order of items in 'X_test'.
 probs: the prediction probabilities of X_test
 k: number of selected elements
 
 returns: a dataframe with the top k elements, their true label and their predicted label
 """
-def get_topK(X_test, Y_test, y_pred, ranking, probs, k):
+def get_topK(X_test, Y_test, Y_pred, ranking, probs, k):
 	#sorts according to ranking
 	x_test_ranked = X_test.iloc[ranking]
 	y_test_ranked = Y_test.iloc[ranking]
 	probs_ranked = probs[ranking]
-	y_pred_ranked = y_pred[ranking]
+	y_pred_ranked = Y_pred[ranking]
 
 	#top k
 	x_topk = x_test_ranked.iloc[:k]
@@ -112,7 +112,7 @@ X_test_enc: encoded x test data
 Y_test: y values of test data
 path: to save figures for permutation importance plots
 
-returns: rankings and the prediction probabilities
+returns: rankings, the prediction probabilities and the models Y predictions
 """
 def fit_and_rank(model, X_train_enc, Y_train, X_test_enc, Y_test, path):
 	# Fit to new data
@@ -134,10 +134,24 @@ def fit_and_rank(model, X_train_enc, Y_train, X_test_enc, Y_test, path):
 	return ranking, probs, Y_pred
 	
 
+"""
+Function that maps the dataset's target column to 0 if the customer is still existing and 1 if it is an attrited customer
+
+df: dataframe of dataset
+
+returns: mapped column
+"""
 def attrition_flag_map(df):
 	return df['Attrition_Flag'].map({'Existing Customer': 0, 'Attrited Customer': 1})
 
-def preprocessing_pipe():	
+"""
+Function that sets up the preprocessing column transformer and returns it. 
+The preprocessing involves standard scaling, one hot encoding and ordinal encoding of
+appropriate columns based on dataset
+
+returns: preprocessing pipe column transformer
+"""
+def preprocessing_column_transformer():	
 	cat_cols = ["Gender", "Marital_Status"]
 	ordinal_cols = ["Education_Level", "Income_Category", "Card_Category"]
 	num_cols = [
@@ -185,15 +199,20 @@ def preprocessing_pipe():
 	]
 	
 
-	preprocessing_pipe = ColumnTransformer(transformers=[
+	preprocessing_ct = ColumnTransformer(transformers=[
 		("cat_onehot", OneHotEncoder(), cat_cols),
 		("scale", StandardScaler(), num_cols),
 		("ord_enc", OrdinalEncoder(categories=categories_order), ordinal_cols),
 	],
 	remainder="drop")
 
-	return preprocessing_pipe
+	return preprocessing_ct
 
+"""
+function that calculates the shapley values of two samples for class instance 1
+
+returns: shapley values of the two samples
+"""
 def calc_shapley(x_test_enc, rf_model, id_instance_1, id_instance_2):
 	class_instance = 1
 	
@@ -208,11 +227,22 @@ def calc_shapley(x_test_enc, rf_model, id_instance_1, id_instance_2):
 	shap_values_instance_1 = shap_values[id_instance_1][:, class_instance]
 	shap_values_instance_2 = shap_values[id_instance_2][:, class_instance]
 
-	return shap_values_instance_1, shap_values_instance_2
+	return shap_values_instance_1.values, shap_values_instance_2.values
 
+"""
+Function that implements equation 4
+
+ranking: The ranked indices that corresponds to the x_test_enc index of the sample
+sample1_rank_index: index of sample1's ranking
+sample2_rank_index: index of sample2's ranking
+x_test_enc: Processed x_test data
+rf_model: the random forest model
+
+returns: the calculation according to eq 4
+"""
 def calc_shap_overall_diff(ranking, sample1_rank_index, sample2_rank_index, x_test_enc, rf_model):
-	id_instance_1 = ranking[sample1_rank_index]
-	id_instance_2 = ranking[sample2_rank_index]
+	id_instance_1 = int(ranking[sample1_rank_index])
+	id_instance_2 = int(ranking[sample2_rank_index]) 
 
 	shap_sample1, shap_sample2 = calc_shapley(x_test_enc, rf_model, id_instance_1, id_instance_2)
 
@@ -224,21 +254,3 @@ def calc_shap_overall_diff(ranking, sample1_rank_index, sample2_rank_index, x_te
 	abs_prod = np.abs(prod) 
 
 	return abs_prod
-
-def plot_prob_diff(probabilities, pre_prob, path):
-	# Differences
-	probs = [float(p[1]) for p in probabilities]
-	labels = [p[0] for p in probabilities]
-	differences = [p - pre_prob for p in probs]
-	print(differences)
-
-	# Plot
-	plt.figure(figsize=[6, 3])
-	plt.barh(range(len(probs)), differences, height=0.5)
-	plt.title('Difference Between Target and Calculated Probabilities')
-	plt.ylabel('Features')
-	plt.yticks(range(len(probs)), labels, rotation=0)
-	plt.xlabel('Absolute Difference')
-	plt.legend()
-	plt.savefig(f"pictures/exp2/{path}.png")
-	plt.show()
