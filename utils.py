@@ -114,18 +114,13 @@ path: to save figures for permutation importance plots
 
 returns: rankings, the prediction probabilities and the models Y predictions
 """
-def fit_and_rank(model, X_train_enc, Y_train, X_test_enc, Y_test, path):
+def fit_and_rank(model, X_train_enc, Y_train, X_test_enc, Y_test):
 	# Fit to new data
 	model.fit(X_train_enc, Y_train)
 	Y_pred = model.predict(X_test_enc)
 		
 	# Check accuracy
 	print_accuracy(model, X_train_enc, Y_train, X_test_enc, Y_test, Y_pred)
-
-	# compute and plot feature importances
-	train_perm_imp = permutation_importance(model, X_train_enc, Y_train, n_repeats=10, random_state=seed)
-	test_perm_imp = permutation_importance(model, X_test_enc, Y_test, n_repeats=10, random_state=seed)
-	print_permutation_importances(train_perm_imp, test_perm_imp, X_train_enc.columns, plot=True, save_plot=True, save_path=path)
 	
 	#Ranking
 	probs = model.predict_proba(X_test_enc)[:, 1]
@@ -220,7 +215,7 @@ def calc_shapley(x_test_enc, rf_model, id_instance_1, id_instance_2):
 	masker = shap.maskers.Independent(data=x_test_enc)
 
 	explainer = shap.Explainer(model=rf_model.predict_proba, # the function predict_proba
-							masker=masker)
+							masker=masker, seed=seed)
 
 	shap_values = explainer(sample)
 
@@ -240,7 +235,7 @@ rf_model: the random forest model
 
 returns: the calculation according to eq 4
 """
-def calc_shap_overall_diff(ranking, sample1_rank_index, sample2_rank_index, x_test_enc, rf_model):
+def feature_contributions(ranking, sample1_rank_index, sample2_rank_index, x_test_enc, rf_model):
 	id_instance_1 = int(ranking[sample1_rank_index])
 	id_instance_2 = int(ranking[sample2_rank_index]) 
 
@@ -251,6 +246,8 @@ def calc_shap_overall_diff(ranking, sample1_rank_index, sample2_rank_index, x_te
 
 	prod = shap_diff * val_diff
 
+	sum = np.sum(prod)
+
 	abs_prod = np.abs(prod) 
 
-	return abs_prod
+	return abs_prod, sum
