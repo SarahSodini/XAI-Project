@@ -1,9 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from sklearn.preprocessing import OneHotEncoder, StandardScaler, OrdinalEncoder, FunctionTransformer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler, OrdinalEncoder
 from sklearn.compose import ColumnTransformer
-from sklearn.inspection import permutation_importance
 from sklearn.metrics import classification_report
 
 import shap
@@ -110,7 +109,6 @@ X_train_enc: x train data that is encoded and processed
 Y_train: y values of train data
 X_test_enc: encoded x test data
 Y_test: y values of test data
-path: to save figures for permutation importance plots
 
 returns: rankings, the prediction probabilities and the models Y predictions
 """
@@ -205,6 +203,11 @@ def preprocessing_column_transformer():
 
 """
 function that calculates the shapley values of two samples for class instance 1
+
+x_test_enc: preprocessed x-test dataset
+rf_model: Random forest model
+id_instance_1: index of instance 1 in the x_test_enc dataset
+id_instance_2: index of instance 2 in the x_test_enc dataset
 
 returns: shapley values of the two samples
 """
