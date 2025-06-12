@@ -76,7 +76,7 @@ ranking: a list of indices representing the ranked order of items in 'X_test'.
 probs: the prediction probabilities of X_test
 k: number of selected elements
 
-returns: a dataframe with the top k elements, their true label and their predicted label
+returns: a dataframe with the top k elements, their true label, their predicted label and their predicted probability
 """
 def get_topK(X_test, Y_test, Y_pred, ranking, probs, k):
 	#sorts according to ranking
@@ -228,7 +228,7 @@ def calc_shapley(x_test_enc, rf_model, id_instance_1, id_instance_2):
 	return shap_values_instance_1.values, shap_values_instance_2.values
 
 """
-Function that implements equation 4
+Function that implements equation 3 and 4
 
 ranking: The ranked indices that corresponds to the x_test_enc index of the sample
 sample1_rank_index: index of sample1's ranking
@@ -236,7 +236,7 @@ sample2_rank_index: index of sample2's ranking
 x_test_enc: Processed x_test data
 rf_model: the random forest model
 
-returns: the calculation according to eq 4
+returns: abs_prod (i.e. the results of eq 4), sum (i.e. result of eq 3)
 """
 def feature_contributions(ranking, sample1_rank_index, sample2_rank_index, x_test_enc, rf_model):
 	id_instance_1 = int(ranking[sample1_rank_index])
